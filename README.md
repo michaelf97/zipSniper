@@ -1,3 +1,4 @@
+```
 python .\zipsniper.py --help
 usage: zipSniper [-h] [-c int] [--http_proxy url] [--https_proxy url] [-O OUTPUT_FILE] url
 
@@ -13,3 +14,4 @@ options:
   --http_proxy url
   --https_proxy url
   -O OUTPUT_FILE, --output_file OUTPUT_FILE
+```
