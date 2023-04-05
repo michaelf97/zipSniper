@@ -1,3 +1,9 @@
+# zipSniper
+
+Read the directory of a ZIP Archive remotely. 
+
+* Supports ZIP64.
+* Supports proxies (including Tor).
 ```
 python .\zipsniper.py --help
 usage: zipSniper [-h] [-c int] [--http_proxy url] [--https_proxy url] [-O OUTPUT_FILE] url
