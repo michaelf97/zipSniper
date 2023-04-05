@@ -1,13 +1,14 @@
 import requests
 import argparse
 import struct
+from tqdm import tqdm
 
 class eocd_struct_64:
 
     def __init__(self, bytestream):
 
         self.bytestream = bytestream
-        unpacked_stream = struct.unpack("LQHHLLQQQQ", self.bytestream[:56])
+        unpacked_stream = struct.unpack("<LQHHLLQQQQ", self.bytestream[:56])
         self.size_of_eocd64 = unpacked_stream[1]
         self.version_made_by = unpacked_stream[2]
         self.min_version_needed = unpacked_stream[3]
@@ -23,7 +24,7 @@ class eocd_struct:
     def __init__(self, bytestream):
 
         self.bytestream = bytestream
-        unpacked_stream = struct.unpack("LHHHHIIH", self.bytestream[:22])
+        unpacked_stream = struct.unpack("<LHHHHIIH", self.bytestream[:22])
         self.disk_number = unpacked_stream[1]
         self.disk_where_cd_starts = unpacked_stream[2]
         self.number_of_cd_records_on_disk = unpacked_stream[3]
@@ -36,7 +37,7 @@ class cd_struct:
     def __init__(self, bytestream):
 
         self.bytestream = bytestream
-        unpacked_stream = struct.unpack("IHHHHHHIIIHHHHHII", self.bytestream[:48])
+        unpacked_stream = struct.unpack("<IHHHHHHIIIHHHHHII", self.bytestream[:46])
         self.version_made_by = unpacked_stream[1]
         self.min_version_needed = unpacked_stream[2]
         self.general_purpose_flag = unpacked_stream[3]
@@ -72,7 +73,7 @@ class zipSniper():
         else:
             self.comment_buffer = comment_buffer
         self.zip_size = self._zip_size()
-        self.is64 = self._word_size()
+        self.is64 = False
         self._eocd_blob()
         self._cd_blob()
         self._sanity_check()
@@ -88,20 +89,7 @@ class zipSniper():
         result = int(response.headers["Content-Length"])
         print(f"ZIP Size: {result}")
         return result
-    
-    def _word_size(self):
 
-        response = requests.get(
-            self.remote_path,
-            allow_redirects=True,
-            headers={"Range": "bytes=18-21"},
-            proxies=self.proxies
-        )
-
-        result = (response.content == b'\xff\xff\xff\xff')
-        print(f"Is 64bit: {result}")
-        return result
-    
     def _eocd_blob(self):
 
         response = requests.get(
@@ -111,21 +99,25 @@ class zipSniper():
             proxies=self.proxies
         )
 
-        if self.is64:
-            eocd_sig = b'\x50\x4b\x06\x06'
-        else:
-            eocd_sig = b'\x50\x4b\x05\x06'
+        eocd_sig_64 = b'\x50\x4b\x06\x06'
+        eocd_sig = b'\x50\x4b\x05\x06'
 
         binary_blob = bytearray(response.content)
         for position, byte in enumerate(binary_blob):
             if hex(byte) == "0x50":
                 if eocd_sig == binary_blob[position:position+4]:
-                    print(f"EOCD Blob offset: {hex(self.zip_size - position)}")
-                    if self.is64:
-                        self.eocd_blob = eocd_struct_64(binary_blob[position:self.zip_size])
-                    else:
-                        self.eocd_blob = eocd_struct(binary_blob[position:self.zip_size])
-                    return
+                    self.is64 = False
+                elif eocd_sig_64 == binary_blob[position:position+4]:
+                    self.is64 = True
+                else:
+                    continue
+                print(f"Is Zip64: {self.is64}")
+                print(f"EOCD Blob offset: {hex(self.zip_size - position)}")
+                if self.is64:
+                    self.eocd_blob = eocd_struct_64(binary_blob[position:self.zip_size])
+                else:
+                    self.eocd_blob = eocd_struct(binary_blob[position:self.zip_size])
+                return
 
         raise MissingEocdSig(self.comment_buffer)
     
@@ -138,12 +130,23 @@ class zipSniper():
             self.remote_path,
             allow_redirects=True,
             headers={"Range": f"bytes={cd_offset}-{cd_offset + cd_size - 1}"},
-            proxies=self.proxies
+            proxies=self.proxies,
+            stream=True
         )
+
+        block_size = 1024
+        progress_bar = tqdm(total=(cd_size - 1), unit="iB", unit_scale=True)
+        binary_blob = bytearray()
+
+        for d in response.iter_content(block_size):
+            progress_bar.update(len(d))
+            binary_blob.extend(d)
+
+        progress_bar.close()
 
         cd_sig = b'\x50\x4b\x01\x02'
         
-        binary_blob = bytearray(response.content)
+        binary_blob
         for position, byte in enumerate(binary_blob):
             if hex(byte) == "0x50":
                 if cd_sig == binary_blob[position:position+4]:
