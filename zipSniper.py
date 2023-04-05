@@ -183,10 +183,23 @@ if __name__ == "__main__":
         description="Pulls the directory structure of a zip file remotely",
     )
     parser.add_argument("url", type=str, help="Remote path of the zip archive")
-    parser.add_argument("-c", "--comment_buffer", dest="comment_buffer", type=int, default=1024)
-    parser.add_argument("--http_proxy", dest="http_proxy", type=str, default=None)
-    parser.add_argument("--https_proxy", dest="https_proxy", type=str, default=None)
+    parser.add_argument("-c", 
+                        "--comment_buffer",
+                        dest="comment_buffer", 
+                        type=int, 
+                        default=1024,
+                        metavar="int",
+                        help="The size of the comment in EOCD is unknown. So to ensure we can find the EOCDs position in the ZIP archive, we specify a random buffer (Default: 1024 Bytes)"
+                    )
+    parser.add_argument("--http_proxy", dest="http_proxy", type=str, default=None, metavar="url")
+    parser.add_argument("--https_proxy", dest="https_proxy", type=str, default=None, metavar="url")
+    parser.add_argument("-O", "--output_file", dest="output_file", type=str, default=None)
     args = parser.parse_args()
 
     sniper = zipSniper(args.url, args.comment_buffer, args.http_proxy, args.https_proxy)
-    print(sniper.directory_list)
+    if args.output_file is not None:
+        with open(args.output_file, "w") as file:
+            for d in sniper.directory_list:
+                file.write(d + "\n")
+    else:
+        print(sniper.directory_list)
