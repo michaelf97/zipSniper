@@ -1,6 +1,8 @@
 import requests
 import argparse
 import struct
+import uuid
+import os
 from tqdm import tqdm
 
 class eocd_struct_64:
@@ -138,20 +140,23 @@ class zipSniper():
         progress_bar = tqdm(total=(cd_size - 1), unit="iB", unit_scale=True)
         binary_blob = bytearray()
 
-        for d in response.iter_content(block_size):
-            progress_bar.update(len(d))
-            binary_blob.extend(d)
+        filename = str(uuid.uuid4())
+        with open(filename, "wb") as file:
+            for d in response.iter_content(block_size):
+                progress_bar.update(len(d))
+                file.write(d)
 
         progress_bar.close()
 
         cd_sig = b'\x50\x4b\x01\x02'
         
-        binary_blob
+        binary_blob = open(filename, "rb").read()
         for position, byte in enumerate(binary_blob):
             if hex(byte) == "0x50":
                 if cd_sig == binary_blob[position:position+4]:
                     cd_data = cd_struct(binary_blob[position:-1])
                     self.directory_list.append(cd_data.file_name.decode("utf-8"))
+        os.remove(filename)
 
     def _sanity_check(self):
 
