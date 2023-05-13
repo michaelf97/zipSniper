@@ -1,0 +1,17 @@
+[package]
+name = "zipSniper"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.2.4", features = ["derive"] }
+reqwest = { version = "0.11.16", features = ["json"] }
+tokio = { version = "1.27", features = ["full"] }
+tokio-socks = "0.5.1"
+bytes = { version = "1.1.0" }
+hex = "0.4.3"
+log = "0.4.17"
+env_logger = "0.10"
+tokio-tungstenite = "0.18.0"
