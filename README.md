@@ -3,21 +3,21 @@
 Read the directory of a ZIP Archive remotely. 
 
 * Supports ZIP64
-* Supports proxies (including Tor)
+* Support for HTTP and SOCKS proxies in development
 ```
-python .\zipsniper.py --help
-usage: zipSniper [-h] [-c int] [--http_proxy url] [--https_proxy url] [-O OUTPUT_FILE] url
+Extracts a file list within a zip archive remotely
 
-Pulls the directory structure of a zip file remotely
+Usage: zipSniper.exe [OPTIONS] --path <url>
 
-positional arguments:
-  url                   Remote path of the zip archive
-
-options:
-  -h, --help            show this help message and exit
-  -c int, --comment_buffer int
-                        The size of the comment in EOCD is unknown. So to ensure we can find the EOCDs position in the ZIP archive, we specify a random buffer (Default: 1024 Bytes)
-  --http_proxy url
-  --https_proxy url
-  -O OUTPUT_FILE, --output_file OUTPUT_FILE
+Options:
+  -p, --path <url>
+  -c, --comment-buffer <BYTES>  Number of bytes to pull from the end of the file.
+                                The EOCD checksum needs to land in this data chunk.
+                                ZIP:0x06054b50  ZIP64:0x06054b50
+                                 [default: 56]
+  -o, --output-file <FILE>      Sets an optional output file
+  -l, --log-level <LEVEL>       Sets the log level (error, warn, info, debug, trace) [default: info]
+      --proxy <PROXY_URL>       Sets the proxy to route HTTP requests through
+  -h, --help                    Print help
+  -V, --version                 Print version
 ```
