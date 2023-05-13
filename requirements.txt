@@ -1,4 +1,0 @@
-pysocks
-tqdm
-requests
-uuid
