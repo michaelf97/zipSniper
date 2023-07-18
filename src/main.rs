@@ -1,81 +1,62 @@
 use clap::{Parser, Subcommand};
-use zipSniper::ZipSniper;
-use std::fs::File;
-use std::io::{self, BufWriter, Write};
-use log::{debug, error, info, trace, Level, LevelFilter};
-use std::str::FromStr;
+use zipSniper;
 
-mod cd;
-mod eocd;
-
-#[derive(Parser, Debug)]
-#[command(name = "zipSniper")]
-#[command(author = "Michael Forret <michael.forret@quorumcyber.com>")]
-#[command(version = "0.1")]
-#[command(about = "Extracts a file list within a zip archive remotely", long_about = None)]
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
 struct Cli {
-    #[arg(short, long, value_name = "url")]
-    path: String,
+    // Mandatory path of the remote ZIP file.
+    #[arg(value_name = "PATH", help = "Remote path of the ZIP archive.")]
+    remote_path: String,
 
+    // Comment buffer
     #[arg(
         short,
         long,
-        default_value_t = 56,
         value_name = "BYTES",
-        help = "Number of bytes to pull from the end of the file.\nThe EOCD checksum needs to land in this data chunk.\nZIP:0x06054b50 \tZIP64:0x06054b50\n"
+        default_value_t = 56,
+        help = "See https://w.wiki/73sX for details."
     )]
     comment_buffer: u64,
 
+    // Proxy address
     #[arg(
         short,
         long,
-        value_name = "FILE",
-        help = "Sets an optional output file"
+        value_name = "PATH",
+        value_parser = proxy_protocol_validation,
+        help = "Address of a proxy (http, https, socks5h)."
     )]
-    output_file: Option<String>,
+    proxy_address: Option<String>,
 
+    // List of files to download
     #[arg(
         short,
         long,
-        default_value_t = String::from("info"),
-        value_name("LEVEL"),
-        help("Sets the log level (error, warn, info, debug, trace)"),
+        value_name = "LIST",
+        help = "List of absolute paths of files within the archive to download and extract."
     )]
-    log_level: String,
-
-    #[arg(
-        long,
-        value_name("PROXY_URL"),
-        help("Sets the proxy to route HTTP requests through"),
-    )]
-    proxy: Option<String>,
+    file_list: Option<String>,
 }
 
 #[tokio::main]
 async fn main() {
-    let args = Cli::parse();
+    let cli = Cli::parse();
+    let client = zipSniper::Client::new(cli.remote_path, cli.comment_buffer, cli.proxy_address);
 
-    //Set up logging
-    let log_level = Level::from_str(&args.log_level).unwrap_or(Level::Info);
-    env_logger::Builder::new()
-        .filter(None, log_level.to_level_filter())
-        .init();
+    let zip = client.await.build_zip().await;
+    println!("{:?}", zip.size_of_cd());
+}
 
-    let sniper = ZipSniper::new(args.path, args.proxy);
-    let cd_list = sniper.run(args.comment_buffer).await;
-
-    if args.output_file.is_some() {
-        let file = File::create(args.output_file.unwrap()).unwrap();
-        let mut buf_writer = BufWriter::new(file);
-
-        for cd in cd_list.iter() {
-            writeln!(buf_writer, "{}", cd.file_name().unwrap());
-        }
-
-        buf_writer.flush().unwrap();
+fn proxy_protocol_validation(proxy_address: &str) -> Result<String, String> {
+    if proxy_address.starts_with("http://")
+        || proxy_address.starts_with("https://")
+        || proxy_address.starts_with("socks5h://")
+    {
+        Ok(String::from(proxy_address))
     } else {
-        for cd in cd_list.iter() {
-            println!("{}", cd.file_name().unwrap());
-        }
+        Err(format!(
+            "Invalid Proxy Scheme: {}. Check --help",
+            proxy_address
+        ))
     }
 }
