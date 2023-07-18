@@ -1,13 +1,13 @@
 [package]
 name = "zipSniper"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.2.4", features = ["derive"] }
-reqwest = { version = "0.11.16", features = ["json"] }
+reqwest = { version = "0.11.16", features = ["json", "socks"] }
 tokio = { version = "1.27", features = ["full"] }
 tokio-socks = "0.5.1"
 bytes = { version = "1.1.0" }
