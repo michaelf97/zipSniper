@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub mod cd;
 pub mod eocd;
 
@@ -11,16 +13,23 @@ pub enum WordSize {
 }
 
 pub struct Zip {
-    eocd: Eocd,
-    cd_list: Vec<Cd>,
+    pub eocd: Eocd,
+    pub cd_list: Vec<Cd>,
+}
+
+impl fmt::Display for Zip {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for cd in &self.cd_list {
+            println!("{}\n", cd);
+        }
+        println!("{}", self.eocd);
+        write!(f, "Done")
+    }
 }
 
 impl Zip {
-    pub fn build(bytes: &[u8]) -> Zip {
-        Zip {
-            eocd: Eocd::from(bytes),
-            cd_list: Vec::new(),
-        }
+    pub fn build(eocd: Eocd, cd_list: Vec<Cd>) -> Zip {
+        Zip { eocd, cd_list }
     }
 
     pub fn word_size(&self) -> WordSize {
@@ -28,25 +37,5 @@ impl Zip {
             eocd::WordSize::Bit32 => WordSize::Bit32,
             eocd::WordSize::Bit64 => WordSize::Bit64,
         }
-    }
-
-    pub fn disk_number(&self) -> u32 {
-        self.eocd.disk_number()
-    }
-
-    pub fn disk_where_cd_starts(&self) -> u32 {
-        self.eocd.disk_where_cd_starts()
-    }
-
-    pub fn number_of_cd_records_on_disk(&self) -> u32 {
-        self.eocd.number_of_cd_records_on_disk()
-    }
-
-    pub fn total_number_of_cd_records(&self) -> u32 {
-        self.eocd.total_number_of_cd_records()
-    }
-
-    pub fn size_of_cd(&self) -> u64 {
-        self.eocd.size_of_cd()
     }
 }

@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use zipSniper;
 
 #[derive(Parser)]
@@ -28,14 +28,29 @@ struct Cli {
     )]
     proxy_address: Option<String>,
 
-    // List of files to download
     #[arg(
         short,
         long,
-        value_name = "LIST",
-        help = "List of absolute paths of files within the archive to download and extract."
+        value_name = "SUB-STRING",
+        help = "Output filter by filename substring"
     )]
-    file_list: Option<String>,
+    filter: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        value_name = "SUB-STRING",
+        help = "Download filter by filename substring"
+    )]
+    download: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        default_value_t = false,
+        help = "Print all information (could be noisy)"
+    )]
+    all_information: bool,
 }
 
 #[tokio::main]
@@ -44,7 +59,24 @@ async fn main() {
     let client = zipSniper::Client::new(cli.remote_path, cli.comment_buffer, cli.proxy_address);
 
     let zip = client.await.build_zip().await;
-    println!("{:?}", zip.size_of_cd());
+    let mut cd_list = zip.cd_list;
+
+    // If a filter is passed, remove any irrelevant CD records.
+    if cli.filter.is_some() {
+        let filter = cli.filter.unwrap();
+        cd_list = cd_list
+            .into_iter()
+            .filter(|cd| cd.file_name().contains(&filter))
+            .collect();
+    }
+
+    for cd in cd_list {
+        if cli.all_information == true {
+            println!("{}", cd)
+        } else {
+            println!("{}", cd.file_name())
+        }
+    }
 }
 
 fn proxy_protocol_validation(proxy_address: &str) -> Result<String, String> {
